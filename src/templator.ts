@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as doT from 'dot';
+import { getRelativePath } from './fs';
 
-const fs = require('fs').promises;
+
 
 interface IQuestionItem {
     id: string,
@@ -12,8 +13,17 @@ interface IQuestionItem {
 
 
 export interface IConfig {
+    /*
+    * id of config
+    */
     id: string,
+    /*
+    * name of config
+    */
     name: string,
+    /*
+    * description
+    */
     description: string,
     pathType: string,
     scriptPath: string,
@@ -22,12 +32,21 @@ export interface IConfig {
     outputFolder: string
 }
 
-export async function ask(q: string): Promise<string> {
+
+/**
+ * 
+ *
+ * @export
+ * @param {string} question - the question to ask
+ * @param {string} placeholder
+ * @return {*}  {Promise<string>}
+ */
+export async function ask(question: string, placeholder: string): Promise<string> {
 
 
     let options: vscode.InputBoxOptions = {
-        prompt: q,
-        placeHolder: "(placeholder)"
+        prompt: question,
+        placeHolder: placeholder
     }
 
     const answer = await vscode.window.showInputBox(options)
@@ -46,6 +65,15 @@ interface IResponse {
 }
 
 
+
+
+/**
+ *
+ *
+ * @export
+ * @param {IConfig} config
+ * @return {*} 
+ */
 export async function buildAnswersFromScript(config: IConfig) {
 
     const responses: IResponse = {};
@@ -60,13 +88,14 @@ export async function buildAnswersFromScript(config: IConfig) {
                 console.log(fullScriptPath)
 
                 try {
-                    const runFunction = require(fullScriptPath)
+                    const runFunction = require(fullScriptPath);
                     const questionsBuild = runFunction();
 
 
                     for (const questionItem of questionsBuild) {
                         if (questionItem.q) {
-                            const answer = await ask(questionItem.q)
+                            console.log(questionItem)
+                            const answer = await ask(questionItem.q, questionItem.placeholder)
 
                             if (!questionItem.buildAnswer) {
                                 responses[questionItem.id] = answer;
@@ -80,7 +109,15 @@ export async function buildAnswersFromScript(config: IConfig) {
                     return responses;
 
                 } catch (error) {
-                    vscode.window.showErrorMessage(error)
+                    if (error instanceof SyntaxError) {
+                        vscode.window.showErrorMessage("Something is wrong with your script file")
+
+                    }
+                    else {
+                        vscode.window.showErrorMessage("An error occured")
+                    }
+                    console.log(error)
+
 
                     return {};
                 }
@@ -99,23 +136,6 @@ export async function buildAnswersFromScript(config: IConfig) {
 
 }
 
-export function getRelativePath(path: string) {
-
-    console.log(path)
-
-    if (vscode.workspace.workspaceFolders) {
-        return vscode.workspace.workspaceFolders[0].uri.fsPath + path;
-    }
-
-    vscode.window.showErrorMessage("path not found");
-    throw "error";   
-
-}
-
-export function writeTemplate(path:string,content:string){
-
-    return fs.writeFile(path,content);
-}
 
 
 /*
@@ -144,54 +164,37 @@ export function writeTemplate(path:string,content:string){
 
 
 
-export async function loadTemplate(config: IConfig) {
-
-    let path = "";
-    if (config.templateFile) {
-        path = getRelativePath(config.templateFile);
-    } else {
-        vscode.window.showErrorMessage("Could not load template");
-        throw "Could not load template";
-    }
-
-    return await fs.readFile(path, "UTF-8");
-
-}
 
 
+
+/**
+ * Take the answers and apply to the template
+ *
+ * @export
+ * @param {string} template
+ * @param {*} answers
+ * @return {*} 
+ */
 export function compile(template: string, answers: any) {
 
-    doT.templateSettings.interpolate = /\<\<\!([\s\S]+?)\!\>\>/g;
+    console.log(answers,"answers")
+
+    doT.templateSettings.interpolate = /\^\^\!([\s\S]+?)\!\^\^/g;
 
     try {
 
         const tempFn = doT.template(template);
+        console.log(tempFn)
         const resultText = tempFn(answers);
+        console.log("resultText",resultText);
         return resultText;
 
     } catch (error) {
-        
-        vscode.window.showErrorMessage(error);
+
+        console.log(error)
+        vscode.window.showErrorMessage("Compilation failed");
         return "";
 
     }
 }
 
-
-export async function buildFileFromTemplate(templatePath: string, answers: any) {
-
-
-    //const compiledContent =
-
-
-
-
-
-
-
-
-
-    vscode.window.showInformationMessage('Hello World babt from Templator!');
-
-
-}

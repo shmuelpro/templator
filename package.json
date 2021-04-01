@@ -1,5 +1,7 @@
 {
 	"name": "templator",
+	"publisher": "shmuelpro",
+	"repository": "https://github.com/shmuelpro/templator",
 	"displayName": "Templator",
 	"description": "",
 	"version": "0.0.1",
@@ -47,6 +49,7 @@
 		"test": "node ./out/test/runTest.js"
 	},
 	"devDependencies": {
+		"@types/dot": "^1.1.4",
 		"@types/glob": "^7.1.3",
 		"@types/mocha": "^8.0.4",
 		"@types/node": "^12.11.7",
